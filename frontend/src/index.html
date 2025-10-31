@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="HMS Enterprise - Modern Hospital Management System for day-care centers" />
+    <meta name="keywords" content="hospital management, healthcare, day care, medical records, appointments" />
+    <meta name="author" content="HMS Enterprise Team" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="HMS Enterprise - Hospital Management System" />
+    <meta property="og:description" content="Modern hospital management platform for day-care centers with comprehensive clinical workflows" />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="HMS Enterprise" />
+    <meta property="twitter:description" content="Modern hospital management platform for day-care centers" />
+    <meta property="twitter:image" content="/og-image.png" />
+
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Preconnect to improve performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#1976d2" />
+
+    <title>HMS Enterprise - Hospital Management System</title>
+
+    <!-- Base styles -->
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f5f5f5;
+      }
+
+      #root {
+        min-height: 100vh;
+      }
+
+      /* Loading screen styles */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+      }
+
+      .loading-logo {
+        width: 120px;
+        height: 120px;
+        background: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 24px;
+        color: #1976d2;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+      }
+
+      .loading-text {
+        font-size: 18px;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+
+      .loading-subtext {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Hide loading screen when app loads */
+      .loading-screen.hidden {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+      }
+
+      /* Print styles */
+      @media print {
+        body {
+          background: white;
+        }
+        
+        .no-print {
+          display: none !important;
+        }
+      }
+
+      /* Accessibility improvements */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      /* Focus styles for better accessibility */
+      *:focus-visible {
+        outline: 2px solid #1976d2;
+        outline-offset: 2px;
+      }
+
+      /* Skip link for accessibility */
+      .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 0;
+        background: #1976d2;
+        color: white;
+        padding: 8px;
+        text-decoration: none;
+        border-radius: 0 0 4px 0;
+        z-index: 100;
+      }
+
+      .skip-link:focus {
+        top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <div id="root">
+      <!-- Loading screen -->
+      <div class="loading-screen" id="loading-screen">
+        <div class="loading-logo">HMS</div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading HMS Enterprise</div>
+        <div class="loading-subtext">Modern Hospital Management System</div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Remove loading screen when app is ready -->
+    <script>
+      // Hide loading screen after a minimum of 1 second to ensure smooth loading
+      setTimeout(() => {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen && document.querySelector('#root > *')) {
+          loadingScreen.classList.add('hidden');
+        }
+      }, 1000);
+
+      // Listen for app loaded event
+      window.addEventListener('load', () => {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          setTimeout(() => {
+            loadingScreen.style.display = 'none';
+          }, 300);
+        }
+      });
+    </script>
+  </body>
+</html>
