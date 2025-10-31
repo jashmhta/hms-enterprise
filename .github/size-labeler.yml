@@ -1,0 +1,45 @@
+# Size Labeler Configuration
+# Automatically labels PRs based on changes size
+
+# Small changes (1-10 files)
+size_small:
+  max_files: 10
+  patterns:
+    - "**/*.md"
+    - "**/*.txt"
+    - "**/*.json"
+
+# Medium changes (11-30 files)
+size_medium:
+  max_files: 30
+  patterns:
+    - "**/*.ts"
+    - "**/*.tsx"
+    - "**/*.js"
+    - "**/*.jsx"
+    - "**/*.css"
+    - "**/*.scss"
+
+# Large changes (31-100 files)
+size_large:
+  max_files: 100
+  patterns:
+    - "**/*"
+
+# Very large changes (100+ files)
+size_xlarge:
+  max_files: 999999
+  patterns:
+    - "**/*"
+
+# Exclude files from size calculation
+exclude:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/coverage/**"
+  - "**/*.log"
+  - "**/tmp/**"
+  - "**/.git/**"
+  - "**/README.md"
+  - "**/CHANGELOG.md"
+  - "**/LICENSE"

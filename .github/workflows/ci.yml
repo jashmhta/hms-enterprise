@@ -1,0 +1,392 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Test Suite
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: hms_test
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run frontend linting
+      working-directory: ./frontend
+      run: npm run lint
+
+    - name: Run frontend type checking
+      working-directory: ./frontend
+      run: npm run type-check
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm run test --coverage
+      env:
+        NODE_ENV: test
+        VITE_API_BASE_URL: http://localhost:3001
+
+    - name: Install backend dependencies
+      working-directory: ./services
+      run: |
+        npm ci
+        echo "Installing dependencies for all services..."
+        cd user && npm ci
+        cd ../patient && npm ci
+        cd ../appointment && npm ci
+        cd ../clinical && npm ci
+
+    - name: Run backend linting
+      run: |
+        cd services && npm run lint
+        cd user && npm run lint
+        cd ../patient && npm run lint
+        cd ../appointment && npm run lint
+        cd ../clinical && npm run lint
+
+    - name: Run backend tests
+      run: |
+        cd services && npm run test
+        cd user && npm run test
+        cd ../patient && npm run test
+        cd ../appointment && npm.run test
+        cd ../clinical && npm run test
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 5432
+        DB_NAME: hms_test
+        DB_USER: postgres
+        DB_PASSWORD: testpassword
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./frontend/coverage
+        flags: unittests
+        name: codecov-umbrella
+
+  # Security Scanning
+  security:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v2
+      with:
+        languages: javascript, typescript
+
+    - name: Autobuild CodeQL databases
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL analysis
+      uses: github/codeql-action/analyze@v2
+
+    - name: Check for secrets
+      uses: trufflesecurity/trufflehog@main
+      with:
+        path: ./
+        base: main
+        head: HEAD
+
+  # Build Applications
+  build:
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: |
+        npm ci
+        npm run build
+
+    - name: Build backend services
+      run: |
+        cd services
+        npm ci
+        cd user && npm run build
+        cd ../patient && npm run build
+        cd ../appointment && npm run build
+        cd ../clinical && npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          frontend/dist
+          services/user/dist
+          services/patient/dist
+          services/appointment/dist
+          services/clinical/dist
+        retention-days: 7
+
+  # Docker Build and Push
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+    
+    strategy:
+      matrix:
+        service: [user, patient, appointment, clinical]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+        flavor: |
+          latest=true
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/${{ matrix.service }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Frontend Deployment
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging
+      run: |
+        echo "Deploying frontend to staging environment..."
+        # Add actual deployment commands here
+        # Could be Vercel, Netlify, or custom hosting
+
+    - name: Deploy to production
+      if: github.event_name == 'release'
+      run: |
+        echo "Deploying frontend to production..."
+        # Add actual deployment commands here
+
+  # Backend Deployment
+  deploy-backend:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy services to staging
+      run: |
+        echo "Deploying backend services to staging environment..."
+        # Add actual deployment commands here
+        # Could be Kubernetes, Docker Compose, or cloud deployment
+
+    - name: Deploy services to production
+      if: github.event_name == 'release'
+      run: |
+        echo "Deploying backend services to production..."
+        # Add actual deployment commands here
+
+  # Database Migrations
+  database-migrations:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run database migrations
+      run: |
+        echo "Running database migrations..."
+        # Add migration commands here
+        # Could use Knex.js, TypeORM migrations, or custom migration scripts
+
+    - name: Seed initial data
+      run: |
+        echo "Seeding initial database data..."
+        # Add seeding commands here
+
+  # End-to-End Tests
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-backend]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install Playwright
+      run: npm ci && npm i -D @playwright/test
+
+    - name: Install dependencies
+      working-directory: ./e2e-tests
+      run: npm ci
+
+    - name: Install browsers
+      run: npx playwright install --with-deps
+
+    - name: Run Playwright tests
+      working-directory: ./e2e-tests
+      run: npx playwright test
+      env:
+        BASE_URL: ${{ secrets.STAGING_URL || 'http://localhost:3000' }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: playwright-report
+        path: e2e-tests/playwright-report/
+        retention-days: 7
+
+  # Performance Tests
+  performance-tests:
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-backend]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v10
+      with:
+        urls: |
+          ${{ secrets.STAGING_URL || 'http://localhost:3000' }}/dashboard
+          ${{ secrets.STAGING_URL || 'http://localhost:3000' }}/patients
+        configPath: './lighthouserc.json'
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+
+  # Notification
+  notify:
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, performance-tests]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.e2e-tests.result == 'success' && needs.performance-tests.result == 'success'
+      run: |
+        echo "✅ CI/CD Pipeline completed successfully!"
+        # Add Slack/Email notification here
+
+    - name: Notify on failure
+      if: needs.e2e-tests.result == 'failure' || needs.performance-tests.result == 'failure'
+      run: |
+        echo "❌ CI/CD Pipeline failed!"
+        # Add Slack/Email notification here

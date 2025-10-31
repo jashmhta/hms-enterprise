@@ -1,0 +1,108 @@
+# Labeler Configuration
+# Automatically labels PRs based on changed files
+
+# Frontend changes
+frontend/**:
+  - frontend
+  - ui
+
+# Backend services
+services/**:
+  - backend
+  - api
+
+# Database
+database/**:
+  - database
+  - migration
+  - sql
+
+# Documentation
+docs/**:
+  - documentation
+  - readme
+
+# Configuration
+**/docker-compose.yml:
+  - docker
+  - infrastructure
+
+**/.env*:
+  - config
+  - environment
+
+# GitHub workflows
+.github/workflows/**:
+  - ci/cd
+  - automation
+
+# Package files
+**/package*.json:
+  - dependencies
+  - npm
+
+# TypeScript
+**/*.ts:
+  - typescript
+  - types
+
+# Tests
+**/*.test.js:
+  - tests
+  - unit
+
+**/*.spec.ts:
+  - tests
+  - unit
+
+# Docker files
+**/Dockerfile:
+  - docker
+  - deployment
+
+# Security
+**/*.key:
+  - security
+  - credentials
+
+**/*.pem:
+  - security
+  - certificates
+
+# Build files
+**/Makefile:
+  - build
+  - tools
+
+# Dependencies
+node_modules/**:
+  - dependencies
+  - npm
+
+# Logs
+**/*.log:
+  - logging
+
+# Build outputs
+**/dist/**:
+  - build
+  - deployment
+
+# Coverage reports
+**/coverage/**:
+  - coverage
+  - testing
+
+# Temporary files
+**/tmp/**:
+  - temporary
+
+# Lock files
+**/package-lock.json:
+  - dependencies
+  - npm
+
+# Git files
+**/.gitignore:
+  - git
+  - configuration

@@ -1,0 +1,27 @@
+name: Label PR
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Label based on changed files
+      uses: actions/labeler@v4
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        add-labels: true
+        configuration-path: .github/labeler.yml
+
+    - name: Add size label
+      uses: actions/labeler@v4
+      with:
+        repo-token: "${{ secrets.GITHUB_TOKEN }}"
+        add-labels: true
+        configuration-path: .github/size-labeler.yml
