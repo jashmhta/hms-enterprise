@@ -1,0 +1,392 @@
+version: '3.8'
+
+services:
+  # Databases & Cache
+  postgres:
+    image: postgres:14-alpine
+    container_name: hms-postgres
+    environment:
+      POSTGRES_DB: hms
+      POSTGRES_USER: hmsuser
+      POSTGRES_PASSWORD: hmspassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hmsuser -d hms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hms-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hms-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - hms-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: hms-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - hms-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./infrastructure/docker/api-gateway
+      dockerfile: Dockerfile
+    container_name: hms-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - hms-network
+
+  # Microservices
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: hms-user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=1h
+      - JWT_REFRESH_EXPIRES_IN=7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/user-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    container_name: hms-patient-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - ABDM_API_URL=https://abhasbx.abdm.gov.in/abha/api
+      - ABDM_CLIENT_ID=${ABDM_CLIENT_ID:-your-client-id}
+      - ABDM_CLIENT_SECRET=${ABDM_CLIENT_SECRET:-your-client-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/patient-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      dockerfile: Dockerfile
+    container_name: hms-appointment-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/appointment-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  clinical-service:
+    build:
+      context: ./services/clinical-service
+      dockerfile: Dockerfile
+    container_name: hms-clinical-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_BUCKET=hms-documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./services/clinical-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  billing-service:
+    build:
+      context: ./services/billing-service
+      dockerfile: Dockerfile
+    container_name: hms-billing-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID:-your-key-id}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET:-your-key-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/billing-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  accounting-service:
+    build:
+      context: ./services/accounting-service
+      dockerfile: Dockerfile
+    container_name: hms-accounting-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/accounting-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  partner-service:
+    build:
+      context: ./services/partner-service
+      dockerfile: Dockerfile
+    container_name: hms-partner-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/partner-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  b2b-service:
+    build:
+      context: ./services/b2b-service
+      dockerfile: Dockerfile
+    container_name: hms-b2b-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/b2b-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  camp-service:
+    build:
+      context: ./services/camp-service
+      dockerfile: Dockerfile
+    container_name: hms-camp-service
+    ports:
+      - "3009:3009"
+    environment:
+      - NODE_ENV=development
+      - PORT=3009
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/camp-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  integration-service:
+    build:
+      context: ./services/integration-service
+      dockerfile: Dockerfile
+    container_name: hms-integration-service
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=development
+      - PORT=3010
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - ABDM_API_URL=https://abhasbx.abdm.gov.in/abha/api
+      - ABDM_CLIENT_ID=${ABDM_CLIENT_ID}
+      - ABDM_CLIENT_SECRET=${ABDM_CLIENT_SECRET}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - GST_EINVOICE_API_URL=${GST_EINVOICE_API_URL}
+      - GST_USERNAME=${GST_USERNAME}
+      - GST_PASSWORD=${GST_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/integration-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: hms-notification-service
+    ports:
+      - "3011:3011"
+    environment:
+      - NODE_ENV=development
+      - PORT=3011
+      - DATABASE_URL=postgresql://hmsuser:hmspassword@postgres:5432/hms
+      - REDIS_URL=redis://redis:6379
+      - MSG91_AUTH_KEY=${MSG91_AUTH_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hms-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api/v1
+      - VITE_RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - hms-network
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  minio-data:
+    driver: local
+
+networks:
+  hms-network:
+    driver: bridge

@@ -1,0 +1,70 @@
+{
+  "name": "hms-enterprise",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Hospital Management System with ERP",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:services && npm run install:frontend",
+    "install:services": "for d in services/*; do (cd $d && npm install); done",
+    "install:frontend": "cd frontend && npm install",
+    "dev": "concurrently \"npm run dev:*\"",
+    "dev:user": "cd services/user-service && npm run dev",
+    "dev:patient": "cd services/patient-service && npm run dev",
+    "dev:appointment": "cd services/appointment-service && npm run dev",
+    "dev:clinical": "cd services/clinical-service && npm run dev",
+    "dev:billing": "cd services/billing-service && npm run dev",
+    "dev:accounting": "cd services/accounting-service && npm run dev",
+    "dev:partner": "cd services/partner-service && npm run dev",
+    "dev:b2b": "cd services/b2b-service && npm run dev",
+    "dev:camp": "cd services/camp-service && npm run dev",
+    "dev:integration": "cd services/integration-service && npm run dev",
+    "dev:notification": "cd services/notification-service && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:services && npm run build:frontend",
+    "build:services": "for d in services/*; do (cd $d && npm run build); done",
+    "build:frontend": "cd frontend && npm run build",
+    "test": "npm run test:services && npm run test:frontend",
+    "test:services": "for d in services/*; do (cd $d && npm test); done",
+    "test:frontend": "cd frontend && npm test",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "db:migrate": "cd database && psql $DATABASE_URL -f migrations/$(ls migrations/ | sort | tail -1)",
+    "db:seed": "cd database && node seeds/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.54.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/hms-enterprise.git"
+  },
+  "keywords": [
+    "hospital-management",
+    "healthcare",
+    "ERP",
+    "ABDM",
+    "India",
+    "microservices",
+    "enterprise"
+  ],
+  "author": "HMS Development Team",
+  "license": "MIT"
+}
