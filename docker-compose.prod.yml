@@ -1,0 +1,336 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: hms-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hms_enterprise}
+      POSTGRES_USER: ${DB_USER:-hms_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_MULTIPLE_DATABASES: ${DB_NAME:-hms_enterprise},hms_user,hms_patient,hms_appointment,hms_clinical,hms_billing,hms_accounting,hms_partner,hms_b2b,hms_camp,hms_integration,hms_notification
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init-scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - hms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hms_user} -d ${DB_NAME:-hms_enterprise}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache and Event Bus
+  redis:
+    image: redis:7-alpine
+    container_name: hms-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - hms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # User Service
+  user-service:
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    container_name: hms-user-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${USER_SERVICE_PORT:-3001}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: hms_user
+      DB_USER: ${DB_USER:-hms_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "${USER_SERVICE_PORT:-3001}:${USER_SERVICE_PORT:-3001}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hms-network
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${USER_SERVICE_PORT:-3001}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Patient Service
+  patient-service:
+    build:
+      context: ./services/patient
+      dockerfile: Dockerfile
+    container_name: hms-patient-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${PATIENT_SERVICE_PORT:-3002}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: hms_patient
+      DB_USER: ${DB_USER:-hms_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://localhost:3000}
+      ABDM_CLIENT_ID: ${ABDM_CLIENT_ID}
+      ABDM_CLIENT_SECRET: ${ABDM_CLIENT_SECRET}
+      ABDM_BASE_URL: ${ABDM_BASE_URL:-https://healthids.abdm.gov.in/api}
+    ports:
+      - "${PATIENT_SERVICE_PORT:-3002}:${PATIENT_SERVICE_PORT:-3002}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    networks:
+      - hms-network
+    volumes:
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PATIENT_SERVICE_PORT:-3002}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Appointment Service
+  appointment-service:
+    build:
+      context: ./services/appointment
+      dockerfile: Dockerfile
+    container_name: hms-appointment-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${APPOINTMENT_SERVICE_PORT:-3003}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: hms_appointment
+      DB_USER: ${DB_USER:-hms_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://localhost:3000}
+      CALENDAR_CREDENTIALS_PATH: /app/credentials/google-calendar.json
+    ports:
+      - "${APPOINTMENT_SERVICE_PORT:-3003}:${APPOINTMENT_SERVICE_PORT:-3003}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      patient-service:
+        condition: service_healthy
+    networks:
+      - hms-network
+    volumes:
+      - ./logs:/app/logs
+      - ./config/calendar:/app/credentials
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${APPOINTMENT_SERVICE_PORT:-3003}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Clinical Service
+  clinical-service:
+    build:
+      context: ./services/clinical
+      dockerfile: Dockerfile
+    container_name: hms-clinical-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: ${CLINICAL_SERVICE_PORT:-3004}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: hms_clinical
+      DB_USER: ${DB_USER:-hms_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "${CLINICAL_SERVICE_PORT:-3004}:${CLINICAL_SERVICE_PORT:-3004}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      patient-service:
+        condition: service_healthy
+      appointment-service:
+        condition: service_healthy
+    networks:
+      - hms-network
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads/clinical:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${CLINICAL_SERVICE_PORT:-3004}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: hms-frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: ${API_URL:-http://localhost:8000}
+      REACT_APP_WS_URL: ${WS_URL:-ws://localhost:8000}
+      REACT_APP_ENVIRONMENT: production
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - nginx
+    networks:
+      - hms-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: hms-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      user-service:
+        condition: service_healthy
+      patient-service:
+        condition: service_healthy
+      appointment-service:
+        condition: service_healthy
+      clinical-service:
+        condition: service_healthy
+    networks:
+      - hms-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: hms-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - hms-network
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: hms-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - hms-network
+
+  # Filebeat for Log Shipping
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.5.0
+    container_name: hms-filebeat
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./monitoring/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/app/logs:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-localhost:9200}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+    networks:
+      - hms-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  hms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

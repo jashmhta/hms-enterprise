@@ -1,0 +1,46 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /app/logs/*.log
+  fields:
+    service: hms
+    environment: production
+  fields_under_root: true
+  multiline.pattern: '^\d{4}-\d{2}-\d{2}'
+  multiline.negate: true
+  multiline.match: after
+
+- type: container
+  enabled: true
+  paths:
+    - '/var/lib/docker/containers/*/*.log'
+  processors:
+    - add_docker_metadata:
+        host: "unix:///var/run/docker.sock"
+
+output.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST:localhost:9200}"]
+  username: "${ELASTICSEARCH_USERNAME:elastic}"
+  password: "${ELASTICSEARCH_PASSWORD}"
+  index: "hms-logs-%{+yyyy.MM.dd}"
+
+setup.template.pattern: "hms-logs-*"
+setup.template.name: "hms-logs"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 1
+
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7
+  permissions: 0644
