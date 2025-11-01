@@ -1,0 +1,177 @@
+{
+  "name": "HMS Enterprise Mobile",
+  "short_name": "HMS Mobile",
+  "description": "Hospital Management System Enterprise Mobile Application",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/icon-72x72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-128x128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-152x152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "splash_pages": [
+    {
+      "src": "/splash/splash-640x1136.png",
+      "sizes": "640x1136",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-750x1334.png",
+      "sizes": "750x1334",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-828x1792.png",
+      "sizes": "828x1792",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-1125x2436.png",
+      "sizes": "1125x2436",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-1242x2208.png",
+      "sizes": "1242x2208",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-1536x2048.png",
+      "sizes": "1536x2048",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-1668x2388.png",
+      "sizes": "1668x2388",
+      "type": "image/png"
+    },
+    {
+      "src": "/splash/splash-2048x2732.png",
+      "sizes": "2048x2732",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Book Appointment",
+      "short_name": "Book",
+      "description": "Quickly book a new appointment",
+      "url": "/appointments/new",
+      "icons": [
+        {
+          "src": "/icons/shortcut-book.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "View Prescriptions",
+      "short_name": "Prescriptions",
+      "description": "Access your medical prescriptions",
+      "url": "/prescriptions",
+      "icons": [
+        {
+          "src": "/icons/shortcut-prescription.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Test Results",
+      "short_name": "Results",
+      "description": "View your lab test results",
+      "url": "/lab-results",
+      "icons": [
+        {
+          "src": "/icons/shortcut-results.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Emergency",
+      "short_name": "Emergency",
+      "description": "Quick access to emergency contacts",
+      "url": "/emergency",
+      "icons": [
+        {
+          "src": "/icons/shortcut-emergency.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/share-handler",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+hms",
+      "url": "/handle/%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "handle_links": "preferred"
+}

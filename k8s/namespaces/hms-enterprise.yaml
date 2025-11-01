@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-enterprise
+  labels:
+    name: hms-enterprise
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-monitoring
+  labels:
+    name: hms-monitoring
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hms-logging
+  labels:
+    name: hms-logging
+    environment: production

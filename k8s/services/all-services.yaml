@@ -1,0 +1,209 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: user-service
+  ports:
+  - name: http
+    port: 3001
+    targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: patient-service
+  ports:
+  - name: http
+    port: 3002
+    targetPort: 3002
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: appointment-service
+  ports:
+  - name: http
+    port: 3003
+    targetPort: 3003
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: billing-service
+  ports:
+  - name: http
+    port: 3004
+    targetPort: 3004
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clinical-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: clinical-service
+  ports:
+  - name: http
+    port: 3005
+    targetPort: 3005
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounting-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: accounting-service
+  ports:
+  - name: http
+    port: 3007
+    targetPort: 3007
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: partner-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: partner-service
+  ports:
+  - name: http
+    port: 3008
+    targetPort: 3008
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: notification-service
+  ports:
+  - name: http
+    port: 3009
+    targetPort: 3009
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pharmacy-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: pharmacy-service
+  ports:
+  - name: http
+    port: 3010
+    targetPort: 3010
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: lab-service
+  ports:
+  - name: http
+    port: 3011
+    targetPort: 3011
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radiology-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: radiology-service
+  ports:
+  - name: http
+    port: 3012
+    targetPort: 3012
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: inventory-service
+  ports:
+  - name: http
+    port: 3013
+    targetPort: 3013
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: analytics-service
+  ports:
+  - name: http
+    port: 3014
+    targetPort: 3014
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: hms-enterprise
+spec:
+  selector:
+    app: postgres
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: 5432
+  type: ClusterIP
