@@ -1,0 +1,11 @@
+import { Router } from "express";
+import { ClinicalController } from "@/controllers/clinical.controller";
+const router = Router();
+const controller = new ClinicalController();
+router.post("/encounters", controller.createEncounter);
+router.get("/encounters/:id", controller.getEncounterById);
+router.post("/encounters/:encounterId/diagnoses", controller.addDiagnosis);
+router.post("/encounters/:encounterId/prescriptions", controller.createPrescription);
+router.get("/patients/:patientId/history", controller.getPatientMedicalHistory);
+router.post("/patients/:patientId/vitals", controller.addVitals);
+export default router;

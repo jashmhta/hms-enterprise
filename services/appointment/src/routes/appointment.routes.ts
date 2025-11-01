@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { AppointmentController } from "@/controllers/appointment.controller";
+const router = Router();
+const controller = new AppointmentController();
+router.post("/", controller.createAppointment);
+router.get("/:id", controller.getAppointmentById);
+router.get("/patient/:patientId", controller.getAppointmentsByPatient);
+router.put("/:id", controller.updateAppointment);
+router.post("/:id/cancel", controller.cancelAppointment);
+export default router;

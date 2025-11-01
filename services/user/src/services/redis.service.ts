@@ -1,0 +1,1 @@
+import redis from 'redis'; export class RedisService { private client: any; constructor() { this.client = redis.createClient({ url: process.env.REDIS_URL }); } async setex(key: string, seconds: number, value: string) { await this.client.setEx(key, seconds, value); } async get(key: string) { return this.client.get(key); } async del(key: string) { return this.client.del(key); } }
